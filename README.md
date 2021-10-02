@@ -1,16 +1,22 @@
 # D&D 5E Macros Plugin
 
-This unofficial TaleSpire plugin for implementing some D&D 5E rule automation. Currently provides automated attack
-macros which roll attacks, compare them to target AC, roll damage, apply immunities and resistances, and adjusts
-the target HP by the resulting amount. Supports automatic dice doubling for critical hits and critical hit immunity.
+This unofficial TaleSpire plugin for implementing some D&D 5E rule automation. Currently provides:
 
-The attack process is documented in speech bubbles and the actual dice rolls are recorded in the chat.
-
-Hit and miss animation included.
+1. Automated attack macros which roll attacks, compare them to target AC, roll damage, apply immunities and resistances,
+   and adjusts the target HP by the resulting amount. Supports automatic dice doubling for critical hits and critical hit
+   immunity. The attack process is documented in speech bubbles and the actual dice rolls are recorded in the chat.
+   Hit and miss animation included.
+   
+2. Skill rolls which support public (all players and GM), private (only player and GM) and secret (only GM) rolls. Each
+   roll can provide static messages to others (e.g. public announcement of Stealth but only GM sees result).
 
 Video Preview: https://youtu.be/NS3wHFoChdw
 
 ## Change Log
+
+1.4.1: Added missing skills icon.
+
+1.4.0: Added skills support.
 
 1.3.0: Corrected sample files (Jon and Goblin).
 
@@ -70,6 +76,33 @@ example. While the format does support skills, they are currently not used.
 	],
 	"skills":
 	[
+		{
+			"name": "Stealth",
+			"type": "Public",
+			"roll": "",
+			"link":
+				{
+					"name": "Stealth",
+					"type": "Secret",
+					"roll": "1D20+5"
+				}
+		},
+		{
+			"name": "Slight Of Hand",
+			"type": "Public",
+			"roll": "",
+			"link":
+				{
+					"name": "Slight Of Hand",
+					"type": "Private",
+					"roll": "1D20+7"
+				}
+		},
+		{
+			"name": "Perception",
+			"type": "Public",
+			"roll": "1D20+3"
+		}
 	],
 	"immunity":
 	[
@@ -87,26 +120,40 @@ PC this is typically set to false to provide the players additional information 
 
 "attacks" is an array of Roll objects which define possible attacks the user can make.
 
-"name" in a Roll object determines the name of the attack whch will be displayed in the radial menu.
-"type" in a Roll obejct determines the type of attack typically unarmed, melee, range and magic.
-"roll" in a Roll object determines the roll that is made when this attack is selected. Uses the #D#+# or #D#-# format.
+"name" is a Roll object that determines the name of the attack whch will be displayed in the radial menu.
+"type" is a Roll obejct that determines the type of attack typically unarmed, melee, range and magic.
+"roll" is a Roll object that determines the roll that is made when this attack is selected. Uses the #D#+# or #D#-# format.
        It should be noted that the number before D is not optional. For example, 1D20 cannot be abbreviated with D20.
 "link" is a Roll object links to the Roll damage object. This follows the same rules as a Roll object except the type
        determines the damage type and the roll rolls the weapon damage. The link in a Roll damage object can be used
 	   to add additional damage (of the same or different type). This is typically used for things like a sword of flame
 	   (where the weapon damage type and the bonus damage type are different) or to add extra damage like sneak damage.
 
-"skills" are currently not used.
+"skills" is a Roll object that determines the skill to be rolled and how the results are displayed. The name proeprty
+         indicates the name of the skill and is used in the output results. Type is one of "public", "private" (or "owner")
+		 or "secret" (or "GM"). Public rolls are displayed as speech bubbles and chat messages for everyone to see.
+		 Private rolls appear on a message board that is displayed only for the owner of the mini and the GM. The contents
+		 is displayed for a configurable amount of time on the message board but can be dismissed by clicking on the message
+		 board. Secret rolls also show up on the message board but only for the GM. The roll property is used to determines
+		 the dice and modifier used to make the skill check. If the roll is empty, the roll name will be displayed as a
+		 comment. The link property can be used to link to additions rolls which are automatically processed. The link
+		 property for skills is typically used to display a comment for the public but display the roll results for the
+		 owner and/or GM.
 
 "immunity" is a list of strings representing damage types from which the user takes no damage. When the damage type
            of an attack against the user matches an immunity (exactly) the damage is reduced to 0.
 		   
 "resistance" os a list of strings representing damage types from which the user takes 1/2 damage. When the damage type
            of an attack against the user matches a resistance (exactly) the damage is reduced to 1/2.
-		   
+				
 Note: Immunity and resistance is only applied to the portion of damage that matches the damage type. If an attack does
       multiple types of damage, the plugin will correctly apply immunity and resistance to only the mathcing damage type.
+	  
+## Skill Icons
 
+If a PNG file with the same name as a skill is present, that PNG file will be used for the icon file. If the skill does
+not have a corresponding PNG file then the default skills icon will be used.
+	  
 ## Limitations
 
 1. While the plugin does expose the characters dictionary (so other plugins can modify it) this plugin reads the contents
