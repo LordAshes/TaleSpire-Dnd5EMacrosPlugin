@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using Bounce.Unmanaged;
+using Newtonsoft.Json;
 using System;
 using UnityEngine;
 
@@ -18,14 +19,29 @@ namespace LordAshes
             }
         }
 
+        private void MessageBoardHandler(StatMessaging.Change[] messages)
+        {
+            foreach(StatMessaging.Change message in messages)
+            {
+                if (message.action != StatMessaging.ChangeType.removed)
+                {
+                    if (message.value != "")
+                    {
+                        messageBoard.content.Add(JsonConvert.DeserializeObject<Message>(message.value));
+                    }
+                }
+            }
+        }
+
         private bool CharacterCheck(string characterName, string rollName)
         {
             CreatureBoardAsset asset = null;
             CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
+            if (asset == null) { return false; }
             return (StatMessaging.GetCreatureName(asset) == characterName);
         }
 
-        private void MenuSelection(CreatureGuid cid, Roll roll)
+        private void AttackSelection(CreatureGuid cid, Roll roll)
         {
             CreatureBoardAsset attacker = null;
             CreatureBoardAsset victim = null;
@@ -132,6 +148,53 @@ namespace LordAshes
                         messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Miss!"));
                     }
                 }
+            }
+        }
+
+        private void SkillSelection(CreatureGuid cid, Roll roll)
+        {
+            CreatureBoardAsset asset = null;
+            CreaturePresenter.TryGetAsset(cid, out asset);
+            while (roll != null)
+            {
+                RollResult result = default(RollResult);
+                if (roll.roll != "") { result = ExecuteRoll(roll.roll); }
+                string content = "";
+                switch (roll.type.ToUpper())
+                {
+                    case "GM":
+                    case "SECRET":
+                    case "OWNER":
+                    case "PRIVATE":
+                        if (roll.roll != "")
+                        {
+                            content = roll.name + " " + result.total + "\r\n(" + result.expanded + ")";
+                            if (result.minRoll) { content = content + "\r\n[Min Roll]"; }
+                            if (result.minRoll) { content = content + "\r\n[Max Roll]"; }
+                        }
+                        else
+                        {
+                            content = roll.name;
+                        }
+                        MessageBoardPost(content, roll.type.ToUpper(), cid);
+                        break;
+                    default:
+                        if (roll.roll != "")
+                        {
+                            content = roll.name + " " + result.total;
+                            if (asset != null) { messageQueue.Add(new Tuple<NGuid,string>(new NGuid(asset.Creature.CreatureId.ToString()), roll.name + " " + result.total)); }
+                            content = content + "\r\n(" + result.expanded + ")";
+                            if (result.minRoll) { content = content + "\r\n[Min Roll]"; }
+                            if (result.minRoll) { content = content + "\r\n[Max Roll]"; }
+                        }
+                        else
+                        {
+                            content = roll.name;
+                        }
+                        messageQueue.Add(new Tuple<NGuid, string>(new NGuid(cid.ToString()), content));
+                        break;
+                }
+                roll = roll.link;
             }
         }
 

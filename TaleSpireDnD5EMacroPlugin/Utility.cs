@@ -1,5 +1,6 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using TMPro;
@@ -83,6 +84,49 @@ namespace LordAshes
                 }
                 return null;
             }
+        }
+
+        public void MessageBoardPost(string content, string audience, CreatureGuid cid)
+        {
+            switch (audience.ToUpper())
+            {
+                case "GM":
+                case "SECRET":
+                    MessageBoardPost(content, Audience.audience_GM, cid);
+                    break;
+                case "PUBLIC":
+                    MessageBoardPost(content, Audience.audience_public, cid);
+                    break;
+                default:
+                    MessageBoardPost(content, Audience.audience_owner, cid);
+                    break;
+            }
+        }
+
+        public void MessageBoardPost(string content, Audience audience, CreatureGuid cid)
+        {
+            Debug.Log("Adding Message To The MessageBoard...");
+            Message msg = new Message()
+            {
+                audience = audience,
+                content = content,
+                limited = cid.ToString(),
+                displayStart = DateTime.UtcNow
+            };
+            StatMessaging.SetInfo(cid, DnD5EMacrosPlugin.Guid, JsonConvert.SerializeObject(msg));
+        }
+
+        private Texture2D MakeColorTexture(int width, int height, Color col)
+        {
+            Color[] pix = new Color[width * height];
+            for (int i = 0; i < pix.Length; ++i)
+            {
+                pix[i] = col;
+            }
+            Texture2D result = new Texture2D(width, height);
+            result.SetPixels(pix);
+            result.Apply();
+            return result;
         }
     }
 }
