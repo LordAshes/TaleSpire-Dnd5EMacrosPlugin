@@ -133,7 +133,8 @@ example. While the format does support skills, they are currently not used.
 	[
 		"Piercing"
 	]
-}```
+}
+```
 
 "NPC" indicates if additional information (like AC and remaining HP) are displayed or not. Typically this is set to true
 for NPCs (i.e. character sheets used by the GM for enemies) so that the PC don't know the AC and HP of the foes. For
