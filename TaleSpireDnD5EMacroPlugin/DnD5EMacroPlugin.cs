@@ -17,9 +17,11 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Dnd5e Macros Plug-In";
         public const string Guid = "org.lordashes.plugins.dnd5emacros";
-        public const string Version = "1.4.0.0";
+        public const string Version = "1.5.0.0";
 
         public Dictionary<string, Character> characters = new Dictionary<string, Character>();
+
+        public bool showDiagnostics = false;
 
         private List<Tuple<NGuid, string>> messageQueue = new List<Tuple<NGuid, string>>();
         private DateTime lastMessage = DateTime.UtcNow;
@@ -41,6 +43,7 @@ namespace LordAshes
             lengthenMessage = Config.Bind("Settings", "Increase Message Duration", 0).Value;
             expansionFontSize = Config.Bind("Settings", "Chat Expension Font Size", 16).Value;
             messageBoard.holdTime = Config.Bind("Settings", "Display Time (In Milliseconds) On Message Board", 5000).Value;
+            showDiagnostics = Config.Bind("Settings", "Show Extra Diagnostics In Log", false).Value;
 
             CampaignSessionManager.OnStatNamesChange += StatChange;
 
@@ -52,41 +55,48 @@ namespace LordAshes
             foreach (string item in FileAccessPlugin.File.Find(".Dnd5e"))
             {
                 string characterName = System.IO.Path.GetFileNameWithoutExtension(item);
-                Debug.Log("D&D 5e Macros Plug-In: Loading Character '" + characterName + "'");
-                characters.Add(characterName,JsonConvert.DeserializeObject<Character>(FileAccessPlugin.File.ReadAllText(item)));
-
-                foreach(Roll roll in characters[characterName].attacks)
+                if (!characters.ContainsKey(characterName))
                 {
+                    Debug.Log("D&D 5e Macros Plug-In: Loading Character '" + characterName + "'");
+                    characters.Add(characterName, JsonConvert.DeserializeObject<Character>(FileAccessPlugin.File.ReadAllText(item)));
 
-                    Debug.Log("D&D 5e Macros Plug-In: Adding Character '" + characterName + "' Roll '" + roll.name + "'");
+                    foreach (Roll roll in characters[characterName].attacks)
+                    {
 
-                    RadialUI.RadialSubmenu.CreateSubMenuItem(
-                                                                DnD5EMacrosPlugin.Guid + ".Attacks",
-                                                                roll.name,
-                                                                FileAccessPlugin.Image.LoadSprite(roll.type+".png"),
-                                                                (cid, obj, mi) => { AttackSelection(cid, roll); },
-                                                                true,
-                                                                () => { return CharacterCheck(characterName, roll.name); }
-                                                            );
+                        Debug.Log("D&D 5e Macros Plug-In: Adding Character '" + characterName + "' Roll '" + roll.name + "'");
 
+                        RadialUI.RadialSubmenu.CreateSubMenuItem(
+                                                                    DnD5EMacrosPlugin.Guid + ".Attacks",
+                                                                    roll.name,
+                                                                    FileAccessPlugin.Image.LoadSprite(roll.type + ".png"),
+                                                                    (cid, obj, mi) => { AttackSelection(cid, roll); },
+                                                                    true,
+                                                                    () => { return CharacterCheck(characterName, roll.name); }
+                                                                );
+
+                    }
+
+                    foreach (Roll roll in characters[characterName].skills)
+                    {
+
+                        Debug.Log("D&D 5e Macros Plug-In: Adding Character '" + characterName + "' Roll '" + roll.name + "'");
+
+                        Sprite icon = (FileAccessPlugin.File.Exists(roll.name + ".png") ? FileAccessPlugin.Image.LoadSprite(roll.name + ".png") : FileAccessPlugin.Image.LoadSprite("Skills.png"));
+
+                        RadialUI.RadialSubmenu.CreateSubMenuItem(
+                                                                    DnD5EMacrosPlugin.Guid + ".Skills",
+                                                                    roll.name,
+                                                                    icon,
+                                                                    (cid, obj, mi) => { SkillSelection(cid, roll); },
+                                                                    true,
+                                                                    () => { return CharacterCheck(characterName, roll.name); }
+                                                                );
+
+                    }
                 }
-
-                foreach (Roll roll in characters[characterName].skills)
+                else
                 {
-
-                    Debug.Log("D&D 5e Macros Plug-In: Adding Character '" + characterName + "' Roll '" + roll.name + "'");
-
-                    Sprite icon = (FileAccessPlugin.File.Exists(roll.name + ".png") ? FileAccessPlugin.Image.LoadSprite(roll.name + ".png") : FileAccessPlugin.Image.LoadSprite("Skills.png")); 
-
-                    RadialUI.RadialSubmenu.CreateSubMenuItem(
-                                                                DnD5EMacrosPlugin.Guid + ".Skills",
-                                                                roll.name,
-                                                                icon,
-                                                                (cid, obj, mi) => { SkillSelection(cid, roll); },
-                                                                true,
-                                                                () => { return CharacterCheck(characterName, roll.name); }
-                                                            );
-
+                    Debug.LogWarning("D&D 5e Macros Plug-In: Character '" + characterName + "' Already Added.");
                 }
             }
 
@@ -186,7 +196,7 @@ namespace LordAshes
         {
             public string name { get; set; } = "";
             public string type { get; set; } = "";
-            public string roll { get; set; } = "1D20";
+            public string roll { get; set; } = "";
             public Roll link { get; set; } = null;
         }
 

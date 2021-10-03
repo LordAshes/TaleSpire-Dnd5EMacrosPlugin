@@ -2,6 +2,7 @@
 using Bounce.Unmanaged;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace LordAshes
@@ -43,6 +44,7 @@ namespace LordAshes
 
         private void AttackSelection(CreatureGuid cid, Roll roll)
         {
+            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Attack Option '"+roll.name+"' Selected"); }
             CreatureBoardAsset attacker = null;
             CreatureBoardAsset victim = null;
             CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out attacker);
@@ -51,19 +53,25 @@ namespace LordAshes
             if(attacker!=null && victim!=null)
             {
                 RollResult attackRoll = ExecuteRoll(roll.roll);
+                if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Attack Roll = "+JsonConvert.SerializeObject(attackRoll)); }
                 int victimAC = (int)victim.Creature.GetStatByIndex(statForAC).Max;
+                if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Victim AC = " + victimAC); }
                 string attackMessage = roll.name + " " + attackRoll.total + "\r\n(" + attackRoll.expanded+")";
                 if (attackRoll.minRoll) { attackMessage = attackMessage + "\r\n(Critical Miss)"; }
                 if (attackRoll.maxRoll) { attackMessage = attackMessage + "\r\n(Critical Hit)"; }
+                if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Queue Message = " + attackMessage); }
                 messageQueue.Add(new Tuple<NGuid,string>(new NGuid(attacker.Creature.CreatureId.ToString()),attackMessage));
                 if ((attackRoll.total>=victimAC && !attackRoll.minRoll) || attackRoll.maxRoll)
                 {
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Hit"); }
                     CreatureManager.AttackCreature(attacker.Creature.CreatureId, attacker.transform.position, victim.Creature.CreatureId, victim.transform.position);
                     if (!characters[StatMessaging.GetCreatureName(victim)].NPC)
                     {
+                        if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: NPC victim"); }
                         if (attackRoll.maxRoll)
                         {
-                            if(characters[StatMessaging.GetCreatureName(victim)].immunity.Contains("Criticals"))
+                            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Critical Hit"); }
+                            if (characters[StatMessaging.GetCreatureName(victim)].immunity.Contains("Criticals"))
                             {
                                 messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Critical Hit!\r\n(Immunity)\r\n(AC:" + victimAC + ")"));
                                 attackRoll.maxRoll = false;
@@ -75,13 +83,16 @@ namespace LordAshes
                         }
                         else
                         {
+                            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Regular Hit"); }
                             messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Hit!\r\n(AC:" + victimAC + ")"));
                         }
                     } 
                     else 
                     {
+                        if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: PC victim"); }
                         if (attackRoll.maxRoll)
                         {
+                            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Critical Hit"); }
                             if (characters[StatMessaging.GetCreatureName(victim)].immunity.Contains("Criticals"))
                             {
                                 messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Critical Hit!\r\n(Immunity)"));
@@ -94,9 +105,11 @@ namespace LordAshes
                         }
                         else
                         {
+                            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Regular Hit"); }
                             messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Hit!"));
                         }
                     }
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Determining Damage"); }
                     RollResult attackerDamage = new RollResult();
                     RollResult attackerDamageChat = new RollResult();
                     RollResult victimDamage = new RollResult();
@@ -104,6 +117,7 @@ namespace LordAshes
                     while (roll.link!=null)
                     {
                         roll = roll.link;
+                        if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Processing Damage '"+roll.name+"'"); }
                         RollResult thisDamageRoll = ExecuteRoll(roll.roll, attackRoll.maxRoll);
 
                         attackerDamage.total = attackerDamage.total + thisDamageRoll.total;
@@ -117,11 +131,14 @@ namespace LordAshes
                         victimDamage.expanded = (victimDamage.expanded == "") ? roll.name + ": " + thisDamageRoll.total + " " + roll.type  : victimDamage.expanded + "\r\n" + roll.name + ": " + thisDamageRoll.total + " " + roll.type;
                         victimDamageChat.expanded = (victimDamageChat.expanded == "") ? thisDamageRoll.expanded : victimDamageChat.expanded + ", " + thisDamageRoll.expanded;
                     }
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Queuing Inflict Messages"); }
                     messageQueue.Add(new Tuple<NGuid, string>(new NGuid(attacker.Creature.CreatureId.ToString()), "Inflicts " + attackerDamage.total+" Damage\r\n\r\n"+attackerDamage.expanded));
                     messageQueue.Add(new Tuple<NGuid, string>(NGuid.Empty, "<size="+expansionFontSize+">"+attackerDamageChat.expanded+"</size>"));
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Adjusting Victim HP"); }
                     int newHP = (int)(victim.Creature.Hp.Value - victimDamage.total);
                     newHP = Math.Max(0, newHP);
                     CreatureManager.SetCreatureStatByIndex(victim.Creature.CreatureId, new CreatureStat(newHP,victim.Creature.Hp.Max), -1);
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Queuing Received Messages"); }
                     messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Receives "+victimDamage.total+" Damage\r\n\r\n"+victimDamage.expanded));
                     messageQueue.Add(new Tuple<NGuid, string>(NGuid.Empty, "<size="+expansionFontSize+">"+victimDamageChat.expanded+"</size>"));
                     if (!characters[StatMessaging.GetCreatureName(victim)].NPC)
@@ -138,27 +155,37 @@ namespace LordAshes
                 }
                 else
                 {
+                    if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Miss"); }
                     victim.Creature.PlayEmote("");
                     if (!characters[StatMessaging.GetCreatureName(victim)].NPC)
                     {
+                        if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: NPC"); }
                         messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Miss!\r\n(AC:" + victimAC + ")"));
                     }
                     else 
                     {
+                        if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: PC"); }
                         messageQueue.Add(new Tuple<NGuid, string>(new NGuid(victim.Creature.CreatureId.ToString()), "Miss!"));
                     }
                 }
+            }
+            else
+            {
+                Debug.LogWarning("Attack Selection Made With Attacker Or Victim Being Null. Attacker: " + Convert.ToString(attacker) + ". Victim: " + Convert.ToString(victim));
             }
         }
 
         private void SkillSelection(CreatureGuid cid, Roll roll)
         {
+            if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Skill Selection '"+roll.name+"'"); }
             CreatureBoardAsset asset = null;
             CreaturePresenter.TryGetAsset(cid, out asset);
+            if (asset == null) { return; }
+            RollResult result = default(RollResult);
             while (roll != null)
             {
-                RollResult result = default(RollResult);
-                if (roll.roll != "") { result = ExecuteRoll(roll.roll); }
+                if (showDiagnostics) { Debug.Log("D&D 5E Macros Plugin: Processing '" + roll.name + "' (Type: "+roll.type+")"); }
+                
                 string content = "";
                 switch (roll.type.ToUpper())
                 {
@@ -168,6 +195,7 @@ namespace LordAshes
                     case "PRIVATE":
                         if (roll.roll != "")
                         {
+                            result = ExecuteRoll(roll.roll);
                             content = roll.name + " " + result.total + "\r\n(" + result.expanded + ")";
                             if (result.minRoll) { content = content + "\r\n[Min Roll]"; }
                             if (result.minRoll) { content = content + "\r\n[Max Roll]"; }
@@ -178,11 +206,59 @@ namespace LordAshes
                         }
                         MessageBoardPost(content, roll.type.ToUpper(), cid);
                         break;
+                    case "OPPOSED":
+                        RollResult DC = result;
+                        MessageBoardPost(" ", Audience.audience_secret, asset.Creature.CreatureId);
+                        if (LocalClient.SelectedCreatureId.ToString() == cid.ToString())
+                        {
+                            if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Cycling Through Other Characters To Opposed Roll"); }
+                            foreach (KeyValuePair<string, Character> target in characters)
+                            {
+                                if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Found " + target.Key); }
+                                if (target.Key != StatMessaging.GetCreatureName(asset))
+                                {
+                                    if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Seeking '" + roll.name + "'"); }
+                                    foreach (Roll skill in target.Value.skills)
+                                    {
+                                        if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Found '" + skill.name + "'"); }
+                                        if (skill.name == roll.name)
+                                        {
+                                            if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Rolling '" + skill.name + "'"); }
+                                            result = ExecuteRoll(skill.roll);
+                                            if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Queuing Rolling '" + target.Key + ": " + roll.name + ": " + result.total + "'"); }
+                                            MessageBoardPost(target.Key + ": " + roll.name + ": " + result.total + ": " + ((result.total >= DC.total) ? "Opposed" : "Unopposed"), Audience.audience_secret, asset.Creature.CreatureId);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            CreatureBoardAsset opposer;
+                            CreaturePresenter.TryGetAsset(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature()), out opposer);
+                            if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Found " + StatMessaging.GetCreatureName(opposer) + ", Seeking Skill '" + roll.name + "'"); }
+                            Character target = characters[StatMessaging.GetCreatureName(opposer)];
+                            foreach (Roll skill in target.skills)
+                            {
+                                if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Found '" + skill.name + "'"); }
+                                if (skill.name == roll.name)
+                                {
+                                    if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Rolling '" + skill.name + "'"); }
+                                    result = ExecuteRoll(skill.roll);
+                                    if (showDiagnostics) { Debug.Log("D&D 5e Macros Plug-In: Queuing Rolling '" + StatMessaging.GetCreatureName(opposer) + ": " + roll.name + ": " + result.total + "'"); }
+                                    MessageBoardPost(StatMessaging.GetCreatureName(opposer) + ": " + roll.name + ": " + result.total + ": " + ((result.total >= DC.total) ? "Opposed" : "Unopposed"), Audience.audience_secret, asset.Creature.CreatureId);
+                                    break;
+                                }
+                            }
+                        }
+                        break;
                     default:
                         if (roll.roll != "")
                         {
+                            result = ExecuteRoll(roll.roll);
                             content = roll.name + " " + result.total;
-                            if (asset != null) { messageQueue.Add(new Tuple<NGuid,string>(new NGuid(asset.Creature.CreatureId.ToString()), roll.name + " " + result.total)); }
+                            messageQueue.Add(new Tuple<NGuid,string>(new NGuid(LocalClient.SelectedCreatureId.ToString()), roll.name + " " + result.total));
                             content = content + "\r\n(" + result.expanded + ")";
                             if (result.minRoll) { content = content + "\r\n[Min Roll]"; }
                             if (result.minRoll) { content = content + "\r\n[Max Roll]"; }
@@ -190,8 +266,9 @@ namespace LordAshes
                         else
                         {
                             content = roll.name;
+                            messageQueue.Add(new Tuple<NGuid, string>(new NGuid(LocalClient.SelectedCreatureId.ToString()), content));
                         }
-                        messageQueue.Add(new Tuple<NGuid, string>(new NGuid(cid.ToString()), content));
+                        messageQueue.Add(new Tuple<NGuid, string>(NGuid.Empty, content));
                         break;
                 }
                 roll = roll.link;
