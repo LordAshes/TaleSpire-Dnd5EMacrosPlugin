@@ -9,10 +9,16 @@ This unofficial TaleSpire plugin for implementing some D&D 5E rule automation. C
    
 2. Skill rolls which support public (all players and GM), private (only player and GM) and secret (only GM) rolls. Each
    roll can provide static messages to others (e.g. public announcement of Stealth but only GM sees result).
+   
+3. Single target or everyone opposed skill checks. The user rolls a skills and if the skill has an opposed skill it will
+   be rolled for the target or everyone who has the skill. The results are shown the to GM which include the user skill
+   roll, the rolls for all the opposers and a opposed or unopposed result.   
 
 Video Preview: https://youtu.be/NS3wHFoChdw
 
 ## Change Log
+
+1.5.0: Added opposed skill checks.
 
 1.4.1: Added missing skills icon.
 
@@ -102,6 +108,21 @@ example. While the format does support skills, they are currently not used.
 			"name": "Perception",
 			"type": "Public",
 			"roll": "1D20+3"
+		},
+		{
+			"name": "Deception",
+			"type": "Public",
+			"link":
+				{
+					"name": "Deception",
+					"type": "Secret",
+					"roll": "1D20+3",
+					"link":
+					{
+						"name": "Insight",
+						"type": "Opposed"
+					}
+				}
 		}
 	],
 	"immunity":
@@ -162,6 +183,8 @@ not have a corresponding PNG file then the default skills icon will be used.
 2. The attack sequence does not provide an option for reactions to be used to modify the attack sequence. For example,
    if the user casts a Shield spell to temporarily increase AC or uses a effects of a Warding Flare.
 3. Currently does not support damage reduction such as that given by the Heavy Armor Master feat.
+4. Opposed skills are roller per character sheet thus all characters using the same character sheet are assumed to have
+   the same result.
 
 ### Work-Around: Changing Specifications
 
